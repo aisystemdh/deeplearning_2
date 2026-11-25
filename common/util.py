@@ -71,13 +71,22 @@ def most_similarity(query,word_to_id,id_to_word,word_matrix,top =5):
 #동시 벌생 행렬을 PPMI 행렬로 변환, C는 동시 발생 행렬이다. verbose는 진행 상황 출력 여부
 def ppmi(C , verbose = False ,eps = 1e -8):
       M = np.zeros_like(C,dtype = np.float32)
-      N = np.sum(C)
+      N = np.sum(C) #전체 등장 횟수
       S = np.sum(C , axis=0)
       total = C.shape[0] * C.shape[1]
       cnt = 0
-
+      #행 수와 열 수를 샌다.
       for i in range(C.shape[0]):
             for j in range(C.shape[1]):
+                  pmi = np.log2(C[i,j]*N / (S[j]*S[i]) + eps)
+                  M[i,j] = max(0,pmi)
+
+                  if verbose:
+                        cnt+=1
+                        if cnt % (total//100 +1) == 0:
+                              print ('%.1f%% 완료' %(100*cnt / total))
+      return M
+
                   
             
 
