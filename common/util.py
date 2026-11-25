@@ -16,7 +16,7 @@ def preprocess(text):
 
     return corpus, word_to_id, id_to_word
 
-#동시 발생 행렬 <파라미터> 1: 원소의 id 2:어휘 수 3:윈도우 크기
+#동시 발생 행렬 자동 생성  <파라미터> 1: 원소의 id 2:어휘 수 3:윈도우 크기
 def create_co_matrix(corpus, vocab_size , window_size=1):
       corpus_size = len(corpus)
       co_matrix = np.zeros((vocab_size,vocab_size),dtype = np.int32)
@@ -43,12 +43,13 @@ def cos_similarity(x,y,eps = 1e-8):
 #단어를 유사도 순으로 나열 query -> 검색 단어 top -> 상위 몇단어까지 출력 할지 결정
 def most_similarity(query,word_to_id,id_to_word,word_matrix,top =5):
       #1: 검색어를 꺼낸다.
-      if quert not in word_to_id:
+      if query not in word_to_id:
             print('%s를 찾을 수 없습니다.' %query)
             return
+      
       print('\n[query]'+ query)
       query_id = word_to_id[query]
-      #해당 단어의 인접행 제공
+      #해당 단어의 vector 제공
       query_vec = word_matrix[query_id]
 
       #코사인 유사도 계산
@@ -57,10 +58,10 @@ def most_similarity(query,word_to_id,id_to_word,word_matrix,top =5):
       for i in range(vocab_size):
             similarity[i] = cos_similarity(word_matrix[i],query_vec)
 
-    #코사인 유사도를 기준으로 내림차순 출력
+      #코사인 유사도를 기준으로 내림차순 출력
       count = 0
       for i in (-1 * similarity).argsort():
-            if id_to_word[i] = query:
+            if id_to_word[i] == query:
                 continue
             print(' %s:%s' %(id_to_word[i],similarity[i]))
             count += 1
@@ -69,7 +70,7 @@ def most_similarity(query,word_to_id,id_to_word,word_matrix,top =5):
             
 
 #동시 벌생 행렬을 PPMI 행렬로 변환, C는 동시 발생 행렬이다. verbose는 진행 상황 출력 여부
-def ppmi(C , verbose = False ,eps = 1e -8):
+def ppmi(C , verbose = False ,eps = 1e-8):
       M = np.zeros_like(C,dtype = np.float32)
       N = np.sum(C) #전체 등장 횟수
       S = np.sum(C , axis=0)
@@ -86,6 +87,59 @@ def ppmi(C , verbose = False ,eps = 1e -8):
                         if cnt % (total//100 +1) == 0:
                               print ('%.1f%% 완료' %(100*cnt / total))
       return M
+
+#단어 id로부터 맥락과 타깃을 만드는 함수
+
+def create_contexts_target(corpus,window_size = 1):
+      target = corpus[window_size:-window_size]
+      contexts = []
+
+      for idx in range(window_size,len(corpus)-window_size):
+            cs = []
+            for t in range(-window_size, window_size + 1):
+                  if t ==0:
+                        continue
+                  cs.append(corpus[idx + t])
+            contexts.append(cs)
+
+      return np.array(contexts), np.array(target)
+
+#원핫으로 바꾸는 함수
+
+def convert_one_hot(corpus,vocab_size):
+      if corpus.ndim == 1:
+            N = corpus.shape[0]
+            one_hot = np.zeros((N, vocab_size),dtype = np.int32)
+
+            for idx , word_id in enumerate(corpus):
+                  one_hot[idx, word_id] =1
+      elif corpus.ndim == 2:
+            N, T = corpus.shape
+            one_hot = np.zeros((N, T, vocab_size),dtype = np.int32)
+
+            for idx, word_ids in enumerate(corpus):
+                  for t, word_id in enumerate(word_ids):
+                        one_hot[idx, t, word_id] = 1
+      else:
+            raise ValueError('corpus must be a 1D or 2D array')
+
+      return one_hot
+
+
+def clip_grads(grads, max_norm):
+      total_norm = 0
+      for grad in grads:
+            total_norm += np.sum(grad ** 2)
+      total_norm = np.sqrt(total_norm)
+
+      rate = max_norm / (total_norm + 1e-6)
+      if rate < 1:
+            for grad in grads:
+                  grad *= rate
+
+
+
+
 
                   
             
